@@ -61,8 +61,8 @@ Ensure you have the following installed on your machine:
 
 ### 1. Clone the Repository
 ```bash
-git clone https://github.com/sam-black007/spamguard-ai.git
-cd spamguard-ai
+git clone https://github.com/sam-black007/spam-phishing-cyberdefense.git
+cd spam-phishing-cyberdefense
 ```
 *(Or navigate to the `spamdetector` directory if working in a multi-directory repo)*
 
