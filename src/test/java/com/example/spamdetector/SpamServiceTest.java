@@ -113,12 +113,12 @@ class SpamServiceTest {
     }
 
     @Test
-    @DisplayName("Academic Model Benchmark runs evaluation across all 3 models")
+    @DisplayName("Academic Model Benchmark runs evaluation across all 4 models")
     void testAcademicModelBenchmark() {
         var benchmark = modelBenchmarkService.runBenchmark();
         assertNotNull(benchmark);
         assertTrue(benchmark.totalCorpusSamples() > 0);
-        assertEquals(3, benchmark.models().size());
+        assertEquals(4, benchmark.models().size());
         for (var m : benchmark.models()) {
             assertTrue(m.accuracy() > 50.0, "Model accuracy should be realistic: " + m.modelName());
         }

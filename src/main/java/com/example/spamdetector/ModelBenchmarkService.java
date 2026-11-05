@@ -16,6 +16,7 @@ public class ModelBenchmarkService {
     private static final Logger log = LoggerFactory.getLogger(ModelBenchmarkService.class);
 
     private final TextNormalizer textNormalizer;
+    private final LogisticRegressionSpamClassifier lrClassifier;
 
     private static final Set<String> STOP_WORDS = Set.of(
             "the", "a", "an", "and", "or", "in", "on", "at", "to", "for", "with",
@@ -58,8 +59,9 @@ public class ModelBenchmarkService {
             RocReport rocReport
     ) {}
 
-    public ModelBenchmarkService(TextNormalizer textNormalizer) {
+    public ModelBenchmarkService(TextNormalizer textNormalizer, LogisticRegressionSpamClassifier lrClassifier) {
         this.textNormalizer = textNormalizer;
+        this.lrClassifier = lrClassifier;
     }
 
     public BenchmarkReport runBenchmark() {
@@ -89,6 +91,7 @@ public class ModelBenchmarkService {
         int k = 5;
         int nbTP = 0, nbFP = 0, nbTN = 0, nbFN = 0;
         int tfTP = 0, tfFP = 0, tfTN = 0, tfFN = 0;
+        int lrTP = 0, lrFP = 0, lrTN = 0, lrFN = 0;
         int ensTP = 0, ensFP = 0, ensTN = 0, ensFN = 0;
 
         for (int fold = 0; fold < k; fold++) {
@@ -130,7 +133,16 @@ public class ModelBenchmarkService {
                     if (tfIsSpam) tfFP++; else tfTN++;
                 }
 
-                // 3. Ensemble prediction (Heuristics + Fold NB + Fold TF)
+                // 3. Supervised Logistic Regression (SGD) prediction
+                double lrProb = lrClassifier != null ? lrClassifier.predict(text).probability() : 0.0;
+                boolean lrIsSpam = lrProb >= 0.50;
+                if (isActuallySpam) {
+                    if (lrIsSpam) lrTP++; else lrFN++;
+                } else {
+                    if (lrIsSpam) lrFP++; else lrTN++;
+                }
+
+                // 4. Ensemble prediction (Heuristics + Fold NB + Fold TF + LR)
                 boolean ensIsSpam = evaluateEnsemble(text, foldNB.predictProbability(text), foldTF.predictSimilarity(text));
                 if (isActuallySpam) {
                     if (ensIsSpam) ensTP++; else ensFN++;
@@ -143,6 +155,7 @@ public class ModelBenchmarkService {
         List<ModelEvaluation> evaluations = List.of(
                 calculateMetrics("Multinomial Naive Bayes (Laplace)", nbTP, nbFP, nbTN, nbFN),
                 calculateMetrics("TF-IDF Vector Space (Cosine)", tfTP, tfFP, tfTN, tfFN),
+                calculateMetrics("Supervised Logistic Regression (SGD)", lrTP, lrFP, lrTN, lrFN),
                 calculateMetrics("Hybrid Multi-Layer Ensemble", ensTP, ensFP, ensTN, ensFN)
         );
 
@@ -175,7 +188,8 @@ public class ModelBenchmarkService {
                 boolean isSpam = "spam".equalsIgnoreCase(doc[0]);
                 double prob = nb.predictProbability(doc[1]);
                 double sim = tf.predictSimilarity(doc[1]);
-                double score = ((prob * 0.50) + (sim * 0.50));
+                double lr = lrClassifier != null ? lrClassifier.predict(doc[1]).probability() : 0.0;
+                double score = ((prob * 0.35) + (sim * 0.35) + (lr * 0.30));
                 boolean predSpam = score >= t;
                 if (isSpam) {
                     if (predSpam) tp++; else fn++;
